@@ -1,0 +1,354 @@
+cff-version: 1.2.0
+message: "If you use sc-markers, please cite it and the works it builds on, listed under references (the methods it uses and, when you ran it on it, the demo dataset)."
+type: software
+title: sc-markers
+abstract: >-
+  A Pennsieve processor of the single-cell workflows: marker genes per cell type or cluster from
+  single-cell or single-nucleus RNA-seq, with scanpy's Wilcoxon rank-sum test on log-normalized
+  expression pooled across samples, filtered for effect size, detection and consistency across
+  samples; writes a ranked marker table, a dot plot, a heatmap and a summary for the report.
+authors:
+  - name: Pennsieve (University of Pennsylvania)
+repository-code: "https://github.com/pennsieve-apps/sc-markers"
+license: Apache-2.0
+keywords:
+  - single-cell
+  - single-nucleus
+  - transcriptomics
+  - marker genes
+  - cell types
+references:
+  - type: article
+    title: "SCANPY: large-scale single-cell gene expression data analysis"
+    authors:
+      - family-names: "Wolf"
+        given-names: "F. Alexander"
+      - family-names: "Angerer"
+        given-names: "Philipp"
+      - family-names: "Theis"
+        given-names: "Fabian J."
+    journal: "Genome Biology"
+    year: 2018
+    volume: "19"
+    issue: "1"
+    start: "15"
+    doi: 10.1186/s13059-017-1382-0
+    notes: "PMID 29409532"
+  - type: article
+    title: "anndata: Access and store annotated data matrices"
+    authors:
+      - family-names: "Virshup"
+        given-names: "Isaac"
+      - family-names: "Rybakov"
+        given-names: "Sergei"
+      - family-names: "Theis"
+        given-names: "Fabian J."
+      - family-names: "Angerer"
+        given-names: "Philipp"
+      - family-names: "Wolf"
+        given-names: "F. Alexander"
+    journal: "Journal of Open Source Software"
+    year: 2024
+    volume: "9"
+    issue: "101"
+    start: "4371"
+    doi: 10.21105/joss.04371
+  - type: article
+    title: "Individual Comparisons by Ranking Methods"
+    authors:
+      - family-names: "Wilcoxon"
+        given-names: "Frank"
+    journal: "Biometrics Bulletin"
+    year: 1945
+    volume: "1"
+    issue: "6"
+    start: "80"
+    doi: 10.2307/3001968
+  - type: article
+    title: "On a Test of Whether one of Two Random Variables is Stochastically Larger than the Other"
+    authors:
+      - family-names: "Mann"
+        given-names: "H. B."
+      - family-names: "Whitney"
+        given-names: "D. R."
+    journal: "The Annals of Mathematical Statistics"
+    year: 1947
+    volume: "18"
+    issue: "1"
+    start: "50"
+    end: "60"
+    doi: 10.1214/aoms/1177730491
+  - type: article
+    title: "Controlling the False Discovery Rate: A Practical and Powerful Approach to Multiple Testing"
+    authors:
+      - family-names: "Benjamini"
+        given-names: "Yoav"
+      - family-names: "Hochberg"
+        given-names: "Yosef"
+    journal: "Journal of the Royal Statistical Society Series B: Statistical Methodology"
+    year: 1995
+    volume: "57"
+    issue: "1"
+    start: "289"
+    end: "300"
+    doi: 10.1111/j.2517-6161.1995.tb02031.x
+  - type: article
+    title: "A comparison of marker gene selection methods for single-cell RNA sequencing data"
+    authors:
+      - family-names: "Pullin"
+        given-names: "Jeffrey M."
+      - family-names: "McCarthy"
+        given-names: "Davis J."
+    journal: "Genome Biology"
+    year: 2024
+    volume: "25"
+    issue: "1"
+    start: "56"
+    doi: 10.1186/s13059-024-03183-0
+    notes: "PMID 38409056"
+  - type: article
+    title: "Confronting false discoveries in single-cell differential expression"
+    authors:
+      - family-names: "Squair"
+        given-names: "Jordan W."
+      - family-names: "Gautier"
+        given-names: "Matthieu"
+      - family-names: "Kathe"
+        given-names: "Claudia"
+      - family-names: "Anderson"
+        given-names: "Mark A."
+      - family-names: "James"
+        given-names: "Nicholas D."
+      - family-names: "Hutson"
+        given-names: "Thomas H."
+      - family-names: "Hudelle"
+        given-names: "Rémi"
+      - family-names: "Qaiser"
+        given-names: "Taha"
+      - family-names: "Matson"
+        given-names: "Kaya J. E."
+      - family-names: "Barraud"
+        given-names: "Quentin"
+      - family-names: "Levine"
+        given-names: "Ariel J."
+      - family-names: "La Manno"
+        given-names: "Gioele"
+      - family-names: "Skinnider"
+        given-names: "Michael A."
+      - family-names: "Courtine"
+        given-names: "Grégoire"
+    journal: "Nature Communications"
+    year: 2021
+    volume: "12"
+    issue: "1"
+    start: "5692"
+    doi: 10.1038/s41467-021-25960-2
+    notes: "PMID 34584091"
+  - type: article
+    title: "A practical solution to pseudoreplication bias in single-cell studies"
+    authors:
+      - family-names: "Zimmerman"
+        given-names: "Kip D."
+      - family-names: "Espeland"
+        given-names: "Mark A."
+      - family-names: "Langefeld"
+        given-names: "Carl D."
+    journal: "Nature Communications"
+    year: 2021
+    volume: "12"
+    issue: "1"
+    start: "738"
+    doi: 10.1038/s41467-021-21038-1
+    notes: "PMID 33531494"
+  - type: article
+    title: "Valid Post-clustering Differential Analysis for Single-Cell RNA-Seq"
+    authors:
+      - family-names: "Zhang"
+        given-names: "Jesse M."
+      - family-names: "Kamath"
+        given-names: "Govinda M."
+      - family-names: "Tse"
+        given-names: "David N."
+    journal: "Cell Systems"
+    year: 2019
+    volume: "9"
+    issue: "4"
+    start: "383"
+    end: "392.e6"
+    doi: 10.1016/j.cels.2019.07.012
+    notes: "PMID 31521605"
+  - type: article
+    title: "Best practices for single-cell analysis across modalities"
+    authors:
+      - family-names: "Heumos"
+        given-names: "Lukas"
+      - family-names: "Schaar"
+        given-names: "Anna C."
+      - family-names: "Lance"
+        given-names: "Christopher"
+      - family-names: "Litinetskaya"
+        given-names: "Anastasia"
+      - family-names: "Drost"
+        given-names: "Felix"
+      - family-names: "Zappia"
+        given-names: "Luke"
+      - family-names: "Lücken"
+        given-names: "Malte D."
+      - family-names: "Strobl"
+        given-names: "Daniel C."
+      - family-names: "Henao"
+        given-names: "Juan"
+      - family-names: "Curion"
+        given-names: "Fabiola"
+      - name: "Single-cell Best Practices Consortium"
+      - family-names: "Aliee"
+        given-names: "Hananeh"
+      - family-names: "Ansari"
+        given-names: "Meshal"
+      - family-names: "Badia-i-Mompel"
+        given-names: "Pau"
+      - family-names: "Büttner"
+        given-names: "Maren"
+      - family-names: "Dann"
+        given-names: "Emma"
+      - family-names: "Dimitrov"
+        given-names: "Daniel"
+      - family-names: "Dony"
+        given-names: "Leander"
+      - family-names: "Frishberg"
+        given-names: "Amit"
+      - family-names: "He"
+        given-names: "Dongze"
+      - family-names: "Hediyeh-zadeh"
+        given-names: "Soroor"
+      - family-names: "Hetzel"
+        given-names: "Leon"
+      - family-names: "Ibarra"
+        given-names: "Ignacio L."
+      - family-names: "Jones"
+        given-names: "Matthew G."
+      - family-names: "Lotfollahi"
+        given-names: "Mohammad"
+      - family-names: "Martens"
+        given-names: "Laura D."
+      - family-names: "Müller"
+        given-names: "Christian L."
+      - family-names: "Nitzan"
+        given-names: "Mor"
+      - family-names: "Ostner"
+        given-names: "Johannes"
+      - family-names: "Palla"
+        given-names: "Giovanni"
+      - family-names: "Patro"
+        given-names: "Rob"
+      - family-names: "Piran"
+        given-names: "Zoe"
+      - family-names: "Ramírez-Suástegui"
+        given-names: "Ciro"
+      - family-names: "Saez-Rodriguez"
+        given-names: "Julio"
+      - family-names: "Sarkar"
+        given-names: "Hirak"
+      - family-names: "Schubert"
+        given-names: "Benjamin"
+      - family-names: "Sikkema"
+        given-names: "Lisa"
+      - family-names: "Srivastava"
+        given-names: "Avi"
+      - family-names: "Tanevski"
+        given-names: "Jovan"
+      - family-names: "Virshup"
+        given-names: "Isaac"
+      - family-names: "Weiler"
+        given-names: "Philipp"
+      - family-names: "Schiller"
+        given-names: "Herbert B."
+      - family-names: "Theis"
+        given-names: "Fabian J."
+    journal: "Nature Reviews Genetics"
+    year: 2023
+    volume: "24"
+    issue: "8"
+    start: "550"
+    end: "572"
+    doi: 10.1038/s41576-023-00586-w
+    notes: "PMID 37002403"
+  - type: article
+    title: "Matplotlib: A 2D Graphics Environment"
+    authors:
+      - family-names: "Hunter"
+        given-names: "John D."
+    journal: "Computing in Science & Engineering"
+    year: 2007
+    volume: "9"
+    issue: "3"
+    start: "90"
+    end: "95"
+    doi: 10.1109/MCSE.2007.55
+  - type: article
+    title: "Transcriptome of the human C2 dorsal root ganglia in C1–2 arthrodesis surgery: insight for neck pain"
+    authors:
+      - family-names: "Arendt-Tranholm"
+        given-names: "Asta"
+      - family-names: "Sankaranarayanan"
+        given-names: "Ishwarya"
+      - family-names: "Payne"
+        given-names: "Cathryn"
+      - family-names: "Mancilla Moreno"
+        given-names: "Marisol"
+      - family-names: "Mazhar"
+        given-names: "Khadijah"
+      - family-names: "Yap"
+        given-names: "Natalie"
+      - family-names: "Chiu"
+        given-names: "Abby P"
+      - family-names: "Barry"
+        given-names: "Allison"
+      - family-names: "Patel"
+        given-names: "Pooja J"
+      - family-names: "Inturi"
+        given-names: "Nikhil N"
+      - family-names: "Tavares-Ferreira"
+        given-names: "Diana"
+      - family-names: "Amin"
+        given-names: "Anubhav"
+      - family-names: "Karandikar"
+        given-names: "Mahesh"
+      - family-names: "Jarvik"
+        given-names: "Jeffrey G"
+      - family-names: "Turner"
+        given-names: "Judith A"
+      - family-names: "Hofstetter"
+        given-names: "Christoph P"
+      - family-names: "Curatolo"
+        given-names: "Michele"
+      - family-names: "Price"
+        given-names: "Theodore J"
+    journal: "Brain"
+    year: 2026
+    volume: "149"
+    issue: "4"
+    start: "1349"
+    end: "1364"
+    doi: 10.1093/brain/awaf370
+    notes: "PMID 41032656"
+  - type: data
+    title: "Single nucleus sequencing of human C2 dorsal root ganglia tissue from fusion surgeries"
+    authors:
+      - family-names: "Arendt-Tranholm"
+        given-names: "Asta"
+        orcid: "https://orcid.org/0000-0002-6997-0959"
+      - family-names: "Sankaranarayanan"
+        given-names: "Ishwarya"
+        orcid: "https://orcid.org/0000-0002-6765-0281"
+      - family-names: "Price"
+        given-names: "Theodore J"
+        orcid: "https://orcid.org/0000-0002-6971-6221"
+    publisher:
+      name: "SPARC Portal"
+    year: 2025
+    version: "1"
+    license: CC-BY-4.0
+    url: "https://doi.org/10.26275/cxuf-ftav"
+    doi: 10.26275/cxuf-ftav
+    notes: "Demo data; Pennsieve Discover dataset 475"

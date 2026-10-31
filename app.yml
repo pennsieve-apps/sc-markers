@@ -1,0 +1,111 @@
+# yaml-language-server: $schema=https://schemas.pennsieve.io/app-manifest/v1.json
+schemaVersion: "1.0"
+application:
+  name: Single-cell Marker Genes
+  description: >-
+    Marker genes for each cell type (sc-annotate) or cluster (sc-integrate) of single-cell or
+    single-nucleus RNA-seq: scanpy's Wilcoxon rank-sum test, each label against all other cells,
+    on log-normalized expression pooled across samples, kept when the gene is detected in enough
+    of the label's cells, has a large enough fold change, and is higher in the label within most
+    samples (so one donor's artefact is not called a marker). Writes a ranked marker table, a dot
+    plot and a heatmap of the top markers, and a summary for the report, under a folder named
+    after LABEL. Per-cell p-values are inflated (cells are not independent replicates); use them to
+    rank genes, and st-compare's pseudobulk test to compare conditions.
+  type: processor
+  tags:
+    - single-cell
+    - single-nucleus
+    - transcriptomics
+    - genomics
+    - cell-typing
+    - marker-genes
+    - neuroscience
+    - pain
+    - musculoskeletal
+runtime:
+  cpu: 2048
+  # Measured on the demo data: see README "Runtime". Fits Lambda's 3008 MB because at most
+  # MAX_CELLS_PER_LABEL cells per label are read.
+  memory: 3008
+  computeTypes:
+    - standard
+    - lambda
+  timeoutSeconds: 900
+parameters:
+  - name: LABEL
+    type: string
+    description: >-
+      Name of this run (lowercase letters, digits, '-'); every output is written under
+      OUTPUT_DIR/<LABEL>/ so several runs (cell types, clusters) can feed one report. Empty:
+      LABEL_COLUMN with '_' as '-' (cell-type, cluster).
+    defaultValue: ""
+  - name: LABEL_COLUMN
+    type: string
+    description: labels.csv column to find markers for (cell_type from sc-annotate, cluster from sc-integrate).
+    defaultValue: "cell_type"
+  - name: N_MARKERS
+    type: integer
+    description: Markers written per label (best first).
+    defaultValue: 50
+    min: 1
+  - name: N_TOP
+    type: integer
+    description: Markers per label in the dot plot and heatmap (at most N_MARKERS).
+    defaultValue: 5
+    min: 1
+  - name: MIN_PCT
+    type: number
+    description: A marker is detected (count > 0) in at least this fraction of the label's cells.
+    defaultValue: 0.1
+    min: 0
+    max: 1
+  - name: MIN_LOGFC
+    type: number
+    description: Minimum log2 fold change of the label over the other cells, pooled and within each sample counted as agreeing.
+    defaultValue: 0.25
+    min: 0
+  - name: MIN_SAMPLE_FRACTION
+    type: number
+    description: >-
+      A marker reaches MIN_LOGFC within at least this fraction of the samples that have at least 10
+      cells of the label (and of the rest). 0 turns the sample-aware filter off.
+    defaultValue: 0.5
+    min: 0
+    max: 1
+  - name: MAX_CELLS_PER_LABEL
+    type: integer
+    description: A label with more cells is subsampled to this many (uniformly at random), which bounds memory and time.
+    defaultValue: 2000
+    min: 50
+  - name: SEED
+    type: integer
+    description: Seed for the subsampling.
+    defaultValue: 42
+  - name: THREADS
+    type: integer
+    description: Threads; 0 = from the container's CPU quota.
+    defaultValue: 0
+    min: 0
+inputs:
+  - name: cells
+    description: <sample_id>.h5ad, one per sample, from sc-annotate or sc-integrate (log-normalized X).
+    mediaTypes:
+      - application/x-hdf5
+    placement: subfolder
+    required: true
+  - name: labels
+    description: labels.csv (sample_id, obs_id, cell_type / cluster) from sc-annotate or sc-integrate.
+    mediaTypes:
+      - text/csv
+    placement: subfolder
+    required: true
+outputs:
+  - name: markers
+    description: >-
+      <LABEL>/markers.csv (label, gene, logfoldchange, pval_adj, pct_in, pct_out, rank, score,
+      n_samples_up, n_samples), <LABEL>/dotplot.png, <LABEL>/heatmap.png, <LABEL>/summary.json,
+      <LABEL>/provenance.json.
+    mediaTypes:
+      - text/csv
+      - image/png
+      - application/json
