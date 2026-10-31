@@ -36,7 +36,7 @@ def run(input_dir: Path, output_dir: Path, monkeypatch, **params) -> int:
     return main()
 
 
-@pytest.mark.parametrize("layout", ["linked", "flat"])
+@pytest.mark.parametrize("layout", ["linked", "flat", "platform"])
 def test_planted_markers(fixture_root, tmp_path, monkeypatch, layout):
     assert run(fixture_root / layout, tmp_path, monkeypatch) == 0
     out = tmp_path / "cell-type"
@@ -57,6 +57,11 @@ def test_planted_markers(fixture_root, tmp_path, monkeypatch, layout):
     prov = json.loads((out / "provenance.json").read_text())
     assert prov["app"] == "sc-markers" and prov["version"] == "0.1.0"
     assert "10.1038/s41467-021-25960-2" in {c["doi"] for c in prov["citations"]}
+    for key in ("app", "version", "tools", "parameters", "inputs", "started", "finished", "samples", "peak_rss_mb",
+                "cgroup_peak_mb", "threads", "citations"):
+        assert key in prov, key
+    assert isinstance(prov["inputs"], list) and isinstance(prov["threads"], int)
+    assert all(not p.startswith("/") for p in prov["inputs"])
     assert all(st["status"] == "ok" for st in prov["samples"])
 
 
@@ -107,15 +112,34 @@ def test_missing_sample_and_bad_file(fixture_root, tmp_path, monkeypatch):
 def test_symlink_escaping_input_is_skipped(fixture_root, tmp_path, monkeypatch):
     outside = tmp_path / "outside"
     outside.mkdir()
-    shutil.copy(next((fixture_root / "linked" / "cells").glob("s1.h5ad")), outside / "evil.h5ad")
+    shutil.copy(fixture_root / "linked" / "cells" / "s1.h5ad", outside / "evil.h5ad")
     inp = tmp_path / "in"
     shutil.copytree(fixture_root / "linked", inp)
     (inp / "cells" / "nested").mkdir()
-    os.symlink(outside, inp / "cells" / "nested" / "link")
+    os.symlink(outside, inp / "cells" / "nested" / "link")          # a deeper link that leaves: not the platform's
     assert run(inp, tmp_path / "out", monkeypatch) == 0
     prov = json.loads((tmp_path / "out" / "cell-type" / "provenance.json").read_text())
-    assert any("outside INPUT_DIR" in v for v in prov["inputs"]["skipped"].values())
-    assert not any("evil" in p for p in prov["inputs"]["h5ad"])
+    assert not any("evil" in p for p in prov["inputs"])
+
+
+def test_h5ad_with_external_link_is_refused(fixture_root, tmp_path, monkeypatch):
+    inp = tmp_path / "in"
+    shutil.copytree(fixture_root / "linked", inp)
+    with h5py.File(inp / "cells" / "s2.h5ad", "a") as f:
+        f["leak"] = h5py.ExternalLink("/etc/hosts", "/")
+    assert run(inp, tmp_path / "out", monkeypatch) == 0
+    prov = json.loads((tmp_path / "out" / "cell-type" / "provenance.json").read_text())
+    s2 = next(s for s in prov["samples"] if s["sample_id"] == "s2")
+    assert s2["status"] == "failed" and "external link" in s2["error"]
+
+
+def test_duplicate_cells_in_labels(fixture_root, tmp_path, monkeypatch):
+    inp = tmp_path / "in"
+    shutil.copytree(fixture_root / "linked", inp)
+    p = inp / "labels" / "labels.csv"
+    df = pd.read_csv(p)
+    pd.concat([df, df.head(3)]).to_csv(p, index=False)
+    assert run(inp, tmp_path / "out", monkeypatch) == 1
 
 
 def test_bad_parameters(fixture_root, tmp_path, monkeypatch):
@@ -154,3 +178,17 @@ def test_handler(fixture_root, tmp_path, monkeypatch):
     assert all(len(x["top"]) == 5 for x in s["labels"])
     with pytest.raises(RuntimeError):
         handler({"inputDir": str(fixture_root / "linked"), "outputDir": str(tmp_path), "LABEL_COLUMN": "x"}, None)
+
+
+def test_sample_filter_not_applied_is_said(fixture_root, tmp_path, monkeypatch):
+    inp = tmp_path / "in"
+    shutil.copytree(fixture_root / "linked", inp)
+    p = inp / "labels" / "labels.csv"
+    df = pd.read_csv(p)
+    df.loc[df.groupby("sample_id").head(4).index, "cell_type"] = "Rare"     # 16 cells, 4 per sample
+    df.to_csv(p, index=False)
+    assert run(inp, tmp_path / "out", monkeypatch) == 0
+    s = json.loads((tmp_path / "out" / "cell-type" / "summary.json").read_text())
+    rare = next(r for r in s["labels"] if r["label"] == "Rare")
+    assert rare["n_samples_checked"] == 0 and rare["sample_filter_applied"] is False
+    assert any("filter not applied" in n and "Rare" in n for n in s["notes"])

@@ -44,8 +44,8 @@ def heatmap(adata, genes: dict[str, list[str]], title: str, path: Path, seed: in
                                                                                      replace=False)))
     sub = adata[np.concatenate(keep)].copy()
     n_genes = sum(len(v) for v in genes.values())
-    axes = sc.pl.heatmap(sub, genes, groupby="label", standard_scale="var", cmap="viridis", show=False,
-                         figsize=(max(6.0, 0.22 * n_genes + 3), max(4.0, 0.3 * len(genes) + 2)))
+    axes = sc.pl.heatmap(sub, genes, groupby="label", standard_scale="var", cmap="viridis", show=False, show_gene_labels=True,
+                         figsize=(max(6.0, 0.16 * n_genes + 3), max(4.0, 0.3 * len(genes) + 2)))
     axes["groupby_ax"].set_ylabel("")
     fig = axes["heatmap_ax"].figure
     fig.suptitle(title, fontsize=10, y=1.08)

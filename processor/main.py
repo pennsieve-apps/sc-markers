@@ -36,30 +36,22 @@ for noisy in ("matplotlib", "PIL", "fontTools", "h5py", "numba", "scanpy", "annd
 APP_NAME = "sc-markers"
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LABEL_RE = re.compile(r"^[a-z0-9-]+$")
-MAX_LABELS_CSV_BYTES = 2 * 1024 ** 3
+MAX_LABELS_CSV_BYTES = 256 * 1024 ** 2
 
-# The methods this step uses, verified with scripts/verify_citations.py (sc-report gathers them).
+# The methods this step uses, in the conventions' short form (verified with scripts/verify_citations.py;
+# sc-report renders the full reference by DOI).
 CITATIONS = [
-    {"doi": "10.1186/s13059-017-1382-0", "pmid": "29409532",
-     "text": "Wolf FA, Angerer P, Theis FJ. SCANPY: large-scale single-cell gene expression data analysis. Genome Biology 2018;19(1):15."},
-    {"doi": "10.21105/joss.04371", "pmid": None,
-     "text": "Virshup I, Rybakov S, Theis FJ, Angerer P, Wolf FA. anndata: Access and store annotated data matrices. Journal of Open Source Software 2024;9(101):4371."},
-    {"doi": "10.2307/3001968", "pmid": None,
-     "text": "Wilcoxon F. Individual Comparisons by Ranking Methods. Biometrics Bulletin 1945;1(6):80."},
-    {"doi": "10.1214/aoms/1177730491", "pmid": None,
-     "text": "Mann HB, Whitney DR. On a Test of Whether one of Two Random Variables is Stochastically Larger than the Other. The Annals of Mathematical Statistics 1947;18(1):50-60."},
-    {"doi": "10.1111/j.2517-6161.1995.tb02031.x", "pmid": None,
-     "text": "Benjamini Y, Hochberg Y. Controlling the False Discovery Rate: A Practical and Powerful Approach to Multiple Testing. Journal of the Royal Statistical Society Series B: Statistical Methodology 1995;57(1):289-300."},
-    {"doi": "10.1186/s13059-024-03183-0", "pmid": "38409056",
-     "text": "Pullin JM, McCarthy DJ. A comparison of marker gene selection methods for single-cell RNA sequencing data. Genome Biology 2024;25(1):56."},
-    {"doi": "10.1038/s41467-021-25960-2", "pmid": "34584091",
-     "text": "Squair JW, Gautier M, Kathe C, et al. Confronting false discoveries in single-cell differential expression. Nature Communications 2021;12(1):5692."},
-    {"doi": "10.1038/s41467-021-21038-1", "pmid": "33531494",
-     "text": "Zimmerman KD, Espeland MA, Langefeld CD. A practical solution to pseudoreplication bias in single-cell studies. Nature Communications 2021;12(1):738."},
-    {"doi": "10.1016/j.cels.2019.07.012", "pmid": "31521605",
-     "text": "Zhang JM, Kamath GM, Tse DN. Valid Post-clustering Differential Analysis for Single-Cell RNA-Seq. Cell Systems 2019;9(4):383-392.e6."},
-    {"doi": "10.1038/s41576-023-00586-w", "pmid": "37002403",
-     "text": "Heumos L, Schaar AC, Lance C, et al. Best practices for single-cell analysis across modalities. Nature Reviews Genetics 2023;24(8):550-572."},
+    {"doi": "10.1186/s13059-017-1382-0", "pmid": "29409532", "text": "Wolf FA et al. Genome Biol 2018"},
+    {"doi": "10.21105/joss.04371", "text": "Virshup I et al. J Open Source Softw 2024"},
+    {"doi": "10.2307/3001968", "text": "Wilcoxon F. Biometrics Bull 1945"},
+    {"doi": "10.1214/aoms/1177730491", "text": "Mann HB et al. Ann Math Stat 1947"},
+    {"doi": "10.1111/j.2517-6161.1995.tb02031.x", "text": "Benjamini Y et al. J R Stat Soc Series B 1995"},
+    {"doi": "10.1186/s13059-024-03183-0", "pmid": "38409056", "text": "Pullin JM et al. Genome Biol 2024"},
+    {"doi": "10.1038/s41467-021-25960-2", "pmid": "34584091", "text": "Squair JW et al. Nat Commun 2021"},
+    {"doi": "10.1038/s41467-021-21038-1", "pmid": "33531494", "text": "Zimmerman KD et al. Nat Commun 2021"},
+    {"doi": "10.1016/j.cels.2019.07.012", "pmid": "31521605", "text": "Zhang JM et al. Cell Syst 2019"},
+    {"doi": "10.1038/s41576-023-00586-w", "pmid": "37002403", "text": "Heumos L et al. Nat Rev Genet 2023"},
+    {"doi": "10.1109/MCSE.2007.55", "text": "Hunter JD. Comput Sci Eng 2007"},
 ]
 
 DEFAULTS = {
@@ -106,13 +98,6 @@ def read_parameters(env=os.environ) -> dict:
     if p["MIN_LOGFC"] < 0 or p["THREADS"] < 0:
         raise ParameterError("MIN_LOGFC and THREADS must be >= 0")
     return p
-
-
-def _rel(path, root: Path):
-    try:
-        return str(Path(path).relative_to(root))
-    except ValueError:
-        return str(path)
 
 
 def _clean_json(obj):
@@ -198,28 +183,36 @@ def main() -> int:
     from processor import markers as M
     from processor.inputs import discover
 
+    from processor.safe_inputs import UnsafeInput
+
     found = discover(input_dir)
     for path, why in found.skipped.items():
-        log.warning("skipped %s: %s", _rel(path, input_dir), why)
+        log.warning("skipped %s: %s", path, why)
     if found.labels_csv is None:
-        log.error("no labels.csv (port labels) under %s", input_dir)
+        log.error("no labels.csv (port labels) under INPUT_DIR")
         return 1
     if not found.h5ad:
-        log.error("no <sample_id>.h5ad files (port cells) under %s", input_dir)
-        return 1
-    if found.labels_csv.stat().st_size > MAX_LABELS_CSV_BYTES:
-        log.error("labels.csv is larger than %d GiB", MAX_LABELS_CSV_BYTES // 1024 ** 3)
+        log.error("no <sample_id>.h5ad files (port cells) under INPUT_DIR")
         return 1
     lc = params["LABEL_COLUMN"]
-    header = pd.read_csv(found.labels_csv, nrows=0).columns
-    missing = [c for c in ("sample_id", "obs_id") if c not in header]
-    if missing:
-        log.error("labels.csv lacks %s", ", ".join(missing))
+    try:
+        header = found.dir.read_csv(found.labels_csv, MAX_LABELS_CSV_BYTES, nrows=0).columns
+        missing = [c for c in ("sample_id", "obs_id") if c not in header]
+        if missing:
+            log.error("labels.csv lacks %s", ", ".join(missing))
+            return 1
+        if lc not in header:
+            log.error("LABEL_COLUMN %r is not a column of labels.csv (columns: %s)", lc, ", ".join(header))
+            return 2
+        labels = found.dir.read_csv(found.labels_csv, MAX_LABELS_CSV_BYTES, usecols=["sample_id", "obs_id", lc],
+                                    dtype=str, keep_default_na=False)
+    except (UnsafeInput, ValueError) as exc:
+        log.error("cannot read labels.csv: %s", exc)
         return 1
-    if lc not in header:
-        log.error("LABEL_COLUMN %r is not a column of labels.csv (columns: %s)", lc, ", ".join(header))
-        return 2
-    labels = pd.read_csv(found.labels_csv, usecols=["sample_id", "obs_id", lc], dtype=str, keep_default_na=False)
+    dup = int(labels.duplicated(["sample_id", "obs_id"]).sum())
+    if dup:
+        log.error("labels.csv has %d duplicated (sample_id, obs_id) rows; each cell must be listed once", dup)
+        return 1
     labels = labels.rename(columns={lc: "label"})
     labels["label"] = labels["label"].str.strip()
     n_unlabelled = int((labels["label"].isin(["", "NA", "nan", "NaN"])).sum())
@@ -248,12 +241,12 @@ def main() -> int:
     for sid, g in chosen.groupby("sample_id", sort=True):
         t = time.monotonic()
         try:
-            b = M.read_sample(found.h5ad[sid], sid, pd.Index(g["obs_id"]))
+            b = M.read_sample(found.dir, found.h5ad[sid], sid, pd.Index(g["obs_id"]))
         except Exception as exc:   # one bad file is skipped, not fatal
             statuses[sid] = {"sample_id": sid, "status": "failed", "error": f"{type(exc).__name__}: {exc}"}
             log.error("%s: failed: %s", sid, exc)
             continue
-        statuses[sid] = {"sample_id": sid, "status": "ok", "h5ad": _rel(found.h5ad[sid], input_dir),
+        statuses[sid] = {"sample_id": sid, "status": "ok", "h5ad": found.dir.rel(found.h5ad[sid]),
                          "n_obs_file": b.n_obs_file, "n_chosen": len(g), "n_read": b.X.shape[0],
                          "n_genes": len(b.genes), "normalized_here": b.normalized_here,
                          "seconds": round(time.monotonic() - t, 2)}
@@ -337,15 +330,20 @@ def main() -> int:
         m = markers[markers["label"] == lab]
         rows.append({"label": lab, "n_cells": int(n_per_label[lab]), "n_cells_used": int(used.at[lab, "n"]),
                      "n_samples_present": int(n_samples_present[lab]), "n_samples_checked": int(r["n_samples_checked"]),
+                     "sample_filter_applied": bool(r["n_samples_checked"] > 0),
                      "n_markers": len(m), "n_pooled_markers": int(r["n_pooled"]),
                      "n_dropped_inconsistent": int(r["n_dropped_inconsistent"]),
                      "top": m.sort_values("rank")["gene"].head(params["N_TOP"]).tolist()})
         log.info("label %s: %d cells (%d used) in %d samples; %d markers pass pooled, %d dropped as inconsistent "
                  "across samples, %d written", lab, n_per_label[lab], used.at[lab, "n"], n_samples_present[lab],
                  r["n_pooled"], r["n_dropped_inconsistent"], len(m))
-    one_sample = [r["label"] for r in rows if r["n_samples_checked"] < 2]
+    unfiltered = [r["label"] for r in rows if r["n_samples_checked"] == 0]
+    if unfiltered:
+        notes.append("Sample-aware filter not applied (no sample has >= 10 cells of the label and of the rest): "
+                     + ", ".join(unfiltered) + ".")
+    one_sample = [r["label"] for r in rows if r["n_samples_checked"] == 1]
     if one_sample:
-        notes.append("Checked in fewer than two samples (so markers cannot be told apart from a sample effect): "
+        notes.append("Checked in one sample only (markers cannot be told apart from a sample effect): "
                      + ", ".join(one_sample) + ".")
     no_markers = [r["label"] for r in rows if r["n_markers"] == 0]
     if no_markers:
@@ -365,8 +363,7 @@ def main() -> int:
     }
     write_json(out / "summary.json", summary)
     timings = {"read": round(t_read, 2), "test": round(t_test, 2), "figures": round(t_fig, 2)}
-    _write_provenance(out, params, found, input_dir, statuses, notes, started, t0, timings,
-                      threads={"n": n_threads, "source": os.environ.get("SC_MARKERS_THREADS_SOURCE", "THREADS")})
+    _write_provenance(out, params, found, input_dir, statuses, notes, started, t0, timings)
     log.info("done: %d labels, %d markers (%d dropped as inconsistent across samples), %.1fs, peak RSS %s MB -> %s",
              len(rows), len(markers), summary["n_dropped_inconsistent"], time.monotonic() - t0, peak_rss_mb(), out)
     for n in notes:
@@ -375,26 +372,28 @@ def main() -> int:
 
 
 def _write_provenance(out: Path, params, found, input_dir, statuses, notes, started, t0, timings, threads=None):
+    """provenance.json in the conventions' shape (plus method, skipped inputs, timings, notes, outputs)."""
     out.mkdir(parents=True, exist_ok=True)
-    timings = dict(timings, total=round(time.monotonic() - t0, 2))
     write_json(out / "provenance.json", {
         "app": APP_NAME, "version": app_version(), "tools": tool_versions(), "parameters": params,
-        "resolved": {"threads": threads} if threads else {},
+        "inputs": [found.dir.rel(p) for p in found.h5ad.values()] + ([found.dir.rel(found.labels_csv)]
+                                                                     if found.labels_csv else []),
+        "started": started.isoformat(timespec="seconds"),
+        "finished": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "samples": list(statuses.values()), "peak_rss_mb": peak_rss_mb(), "cgroup_peak_mb": cgroup_peak_mb(),
+        "threads": int(os.environ.get("SC_MARKERS_THREADS") or params["THREADS"] or 1),
+        "citations": CITATIONS,
         "method": {
             "cells": "per label at most MAX_CELLS_PER_LABEL cells, uniformly at random; genes present in every sample",
             "test": "scanpy.tl.rank_genes_groups(method='wilcoxon', tie_correct=True, pts=True) on log-normalized X, "
                     "each label vs all other cells, Benjamini-Hochberg per label",
             "filter": "pval_adj < 0.05, logfoldchange >= MIN_LOGFC, pct_in >= MIN_PCT, and logfoldchange >= MIN_LOGFC "
-                      "within >= MIN_SAMPLE_FRACTION of the samples with >= 10 cells of the label and of the rest",
+                      "within >= MIN_SAMPLE_FRACTION of the samples with >= 10 cells of the label and of the rest "
+                      "(not applied to a label no sample has 10 cells of)",
             "rank": "Wilcoxon z-score among the markers that pass",
         },
-        "citations": CITATIONS,
-        "inputs": {"h5ad": [_rel(p, input_dir) for p in found.h5ad.values()],
-                   "labels_csv": _rel(found.labels_csv, input_dir) if found.labels_csv else None,
-                   "skipped": {_rel(k, input_dir): v for k, v in found.skipped.items()}},
-        "started": started.isoformat(), "finished": datetime.now(timezone.utc).isoformat(),
-        "timings_seconds": timings, "peak_rss_mb": peak_rss_mb(), "cgroup_memory_peak_mb": cgroup_peak_mb(),
-        "samples": list(statuses.values()), "notes": notes,
+        "skipped_inputs": found.skipped,
+        "timings_seconds": dict(timings, total=round(time.monotonic() - t0, 2)), "notes": notes,
         "outputs": sorted(p.name for p in out.iterdir() if p.name != "provenance.json") + ["provenance.json"],
     })
 

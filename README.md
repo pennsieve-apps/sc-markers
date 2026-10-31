@@ -12,9 +12,12 @@ samples.
 to name a cluster, or to pick genes for staining. Two cautions are built into the outputs. First,
 a gene that is high in one donor's cells only is not kept as a marker: with nuclei pooled from
 many donors, one donor's batch effect or contamination can otherwise top the list. Second, the
-p-values are not evidence. Every nucleus counts as an independent observation, so p-values are
-far too small (Squair et al. 2021; Zimmerman et al. 2021). When the labels are clusters of these
-same cells, the test also finds the differences the clustering was built on (Zhang et al. 2019).
+p-values are not evidence. Every nucleus counts as an independent observation although nuclei of
+one donor are not independent (pseudoreplication), so p-values are far too small: Squair et al.
+(2021) show the false discoveries this causes and favour pseudobulk tests; Zimmerman et al. (2021)
+show the same inflation, find pseudobulk aggregation conservative and propose mixed models with a
+donor random effect. When the labels are clusters of these same cells, the test also finds the
+differences the clustering was built on (Zhang et al. 2019).
 Read the rank, the fold change and the detection rates; for differences between conditions, use
 st-compare's pseudobulk test.
 
@@ -38,10 +41,13 @@ step Lambda-sized.
 | `markers` | output | `<LABEL>/...` | Everything under a folder named after `LABEL`, so several runs (cell types, clusters) can be linked into one port of sc-report. |
 
 Linked, the inputs arrive in `INPUT_DIR/cells/` and `INPUT_DIR/labels/`. Without links, files
-are found by name anywhere under `INPUT_DIR`. Symlinks are followed, but only to where the
-platform's own entries (in `INPUT_DIR` and its port folders) point; a deeper link that resolves
-elsewhere is skipped and listed in `provenance.json`. Only `.h5ad` files whose stem is a
-`sample_id` in `labels.csv` are read.
+are found by name anywhere under `INPUT_DIR`. Every path comes from the shared
+`processor/safe_inputs.py` (vendored unchanged from `workflow-single-cell/shared/`): symlinks are
+followed only to where the platform's own links point (the entries of `INPUT_DIR` and of a real
+port folder, one hop), deeper links that leave are skipped and logged; `labels.csv` is read
+capped at 256 MB; each `.h5ad` is checked with `check_h5` (no external links, external storage
+or virtual datasets) before it is opened. Only `.h5ad` files whose stem is a `sample_id` in
+`labels.csv` are read; a `labels.csv` listing a cell twice stops the run (exit 1).
 
 ## Parameters
 
@@ -89,44 +95,59 @@ expression scaled per gene. `heatmap.png`: the same genes in single cells (at mo
 at random), scaled per gene.
 
 `summary.json`: label, label column, samples, cells labelled and used, genes in common and
-tested, per label (cells, cells used, samples present, samples checked, markers written, pooled
-hits, hits dropped as inconsistent, top `N_TOP`), skipped labels, thresholds, notes, figures and
-the p-value caveat. `provenance.json`: app and version, tool versions, parameters, method,
-`citations` (`{doi, pmid, text}`), inputs, timings, peak memory, per-sample status.
+tested, per label (cells, cells used, samples present, samples checked, `sample_filter_applied`,
+markers written, pooled hits, hits dropped as inconsistent, top `N_TOP`), skipped labels,
+thresholds, notes (including "Sample-aware filter not applied" for labels no sample has 10 cells
+of), figures and the p-value caveat. `provenance.json`, in the conventions' shape: `app`,
+`version`, `tools`, `parameters`, `inputs` (relative paths), `started`, `finished`, `samples`
+(per-sample status), `peak_rss_mb`, `cgroup_peak_mb`, `threads`, `citations` (`{doi, pmid,
+text}` short form), plus `method`, `skipped_inputs`, `timings_seconds`, `notes`, `outputs`.
 
 ## Runtime
 
 `computeTypes: [standard, lambda]`, 2 vCPU / 3008 MB, 15 min timeout. One image serves both:
-`processor/entry.py` fixes the thread count and runs `main()` as a container, or, when
-`AWS_LAMBDA_RUNTIME_API` is set, starts the Lambda runtime interface client with
+`processor/entry.py` fixes the thread count (`cpu_threads`) and runs `main()` as a container, or,
+when `AWS_LAMBDA_RUNTIME_API` is set, starts the Lambda runtime interface client with
 `processor/handler.py`. Measured with `docker run --platform linux/amd64 --memory 3g --cpus 2
---network none --read-only --tmpfs /tmp` (**amd64 emulation on an M-series Mac**):
+--network none --read-only --tmpfs /tmp` (**amd64 emulation on an M-series Mac**), inputs laid out
+as the platform does (port folders of symlinks into the upstream output):
 
-| Data | cells used | wall time (process) | peak RSS | cgroup peak |
-|---|---|---|---|---|
-| drg-c2, sc-prep output (12 samples, 20,415 nuclei, counts in `X`), 8 stand-in clusters | 14,777 of 20,415; 9,074 of 17,681 genes tested | 30 s (test 24 s) | 1,263 MB | 1,565 MB |
-| Synthetic fixture (4 x 400 cells, 300 genes) | 1,600 | 19 s | 647 MB | 516 MB |
+| Data | labels | cells used / genes tested | time (process) | peak RSS | cgroup peak |
+|---|---|---|---|---|---|
+| drg-c2, sc-annotate output (12 samples, 18,438 nuclei), `LABEL_COLUMN=cell_type` | 10 | 11,744 / 8,774 | 26 s | 1,209 MB | 1,139 MB |
+| drg-c2, sc-annotate output, `LABEL_COLUMN=cluster` | 15 | 17,279 / 9,161 | 31 s | 1,314 MB | 1,249 MB |
 
-Memory grows with labels x `MAX_CELLS_PER_LABEL` x genes detected, not with the dataset: 20
-labels at the default (40,000 cells) stay well within 3 GB. Image: 929 MB (scanpy brings numba,
-llvmlite, scikit-learn, statsmodels).
+Memory grows with labels x `MAX_CELLS_PER_LABEL` x genes detected, not with the dataset. An
+estimate, extrapolated from the cluster run (15 labels, 17,279 cells, 1.31 GB): 30 labels at the
+default cap (60,000 cells) would need about 2.5–3 GB; for more labels lower `MAX_CELLS_PER_LABEL`
+or run on `standard` with more memory. Image: 929 MB unpacked (222 MB compressed; scanpy brings
+numba, llvmlite, scikit-learn, statsmodels).
 
 ## Results on the demo data
 
-sc-annotate's output for drg-c2 did not exist yet when this was written. To exercise the app on
-real nuclei, `sc-prep`'s `cells` output (Discover 475; 12 samples, 20,415 nuclei after sc-prep's
-3,000-per-sample cap) was labelled with **stand-in clusters**: k-means (k = 8) on 30 PCs of the
-pooled log-normalized data, not sc-annotate's labels. Every cluster got 50 markers; the top five
-are biologically coherent:
+drg-c2 (Discover 475; 12 samples, 18,438 nuclei after sc-qc, sc-integrate's 15 clusters,
+sc-annotate's 10 cell types; acute and chronic neck pain), the upstream outputs as they stood on
+2026-10-31 18:48 UTC. Outputs in the workflow repository under
+`data/work/drg-c2/markers/markers/{cell-type,cluster}/`. Top five markers per cell type:
 
-- neurons (NEFL, NEFM, NEFH, MAP1B), satellite glia / Schwann cells (LPL, MPZ, S100B, PRIMA1);
-- fibroblasts (IGFBP6, DCN, TNXB; and LAMA2, COL1A1), macrophages (FGD2, MS4A6A, CD163, CSF1R),
-  endothelium (VWF, ECSCR, EMCN, EGFL7);
-- one cluster of repetitive gene families (FOXD4L5, PPIAL4G, USP17L*), which looks like a
-  low-quality or ambient cluster that sc-qc should remove.
+- Neuron: MAP1B, STMN2, TUBB2A, TUBB2B, SNAP25; Nociceptor (NP MRGPRD-type): PDE4C, PTGDR, KCNT1,
+  ASIC3, PDIA2; Pruritogen receptor (SST+): RGS4, IL31RA, HTR3A, RET, PCSK1;
+- Satellite glia: TTYH1, PRIMA1, LPL, GRIK3, LGI4; Myelinating Schwann cell: MLIP, SLC25A48,
+  DRP2, KIF19, PRX;
+- Fibroblast: COL1A1, COL6A2, PKDCC, DCN, COL3A1; Endothelial: VWF, ADCY4, EMCN, ECSCR, ARHGEF15;
+  Macrophage: CD163, MS4A6A, FGD2, STAB1, MS4A7; Pericyte / smooth muscle: MYH11, ACTA2, CASQ2,
+  CACNA1H, NOTCH3;
+- Unassigned (6,463 nuclei, 35%): FOXD4L5, PPIAL4G, USP17L1, USP17L15, USP17L3, i.e. repetitive
+  gene families rather than a cell type. Unassigned spans several of sc-integrate's clusters
+  (C03, C04, C05 and others, each with a different best guess in sc-annotate's `clusters.csv`);
+  its top markers are those of C03, the repetitive-gene cluster: likely low-quality or
+  ambient-dominated nuclei that sc-qc kept (ambient removal was skipped: no GPU).
 
-The sample-aware filter dropped 5,963 pooled hits over the 8 clusters (38 to 1,379 per cluster),
-most where a cluster was concentrated in a few samples (C01, in 5 of 12 samples: 1,268 dropped).
+Every label got 50 markers. The sample-aware filter dropped 6,777 pooled hits for cell types (39
+for Unassigned to 1,363 for Fibroblast) and 12,871 for clusters, most where a label is
+concentrated in a few samples (Fibroblast in 10 samples, checked in 5; Macrophage in 8, checked
+in 5). With clusters, C05 (NEFM, NEFH, NEFL with MT-CO3 and APOE) looks like a neuron-plus-ambient
+mixture.
 
 ## Limitations
 
@@ -143,28 +164,36 @@ most where a cluster was concentrated in a few samples (C01, in 5 of 12 samples:
 - Subsampling (`MAX_CELLS_PER_LABEL`) makes the "rest" of each label weighted towards smaller
   labels compared with their natural abundance, which changes `pct_out` somewhat.
 
-**Best practices** (Heumos et al. 2023). The guide recommends the Wilcoxon test for marker
-genes and pseudobulk methods for differences between conditions; this app follows that. It adds
-the sample-aware filter, which the guide does not prescribe, because a pooled test cannot see
-donor effects.
+**Best practices.** The online book that accompanies Heumos et al. (2023), *Single-cell best
+practices* (sc-best-practices.org), says in its annotation chapter that "for marker gene
+calculation of clusters, simple methods such as the Wilcoxon rank-sum test are thought to
+perform best" (citing Pullin & McCarthy), and its differential gene expression chapter
+recommends pseudobulk methods (or mixed models) for differences between conditions (checked on
+2026-10-31). This app follows both. It adds the sample-aware filter, which the book does not
+prescribe, because a pooled test cannot see donor effects.
 
 ## Running it locally
 
 ```sh
 python3.12 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
-make test PYTHON=.venv/bin/python   # pytest on the synthetic fixture, both input layouts
+make test PYTHON=.venv/bin/python   # pytest on the synthetic fixture, three input layouts
 make run PYTHON=.venv/bin/python    # builds the image (amd64), runs it over the fixture into data/output/
 make validate PYTHON=.venv/bin/python   # app.yml against the manifest schema (+ CITATION.cff with cffconvert)
 ```
 
-The tests check the planted markers and the dropped sample artefact, clusters with
-subsampling, counts in `X`, a missing sample and an unreadable file, a symlink escaping
-`INPUT_DIR`, bad parameters, missing inputs, a single label, and the Lambda handler.
+The tests check the planted markers and the dropped sample artefact in the linked, flat and
+platform layouts (real port folders of symlinks into a sibling upstream output); clusters with
+subsampling; counts in `X`; a missing sample and an unreadable file; a deeper symlink leaving
+`INPUT_DIR`; an `.h5ad` with an HDF5 external link (refused); duplicated cells in `labels.csv`;
+the "filter not applied" note; the provenance shape; bad parameters; missing inputs; a single
+label; and the Lambda handler. `scripts/check-shared.sh` in the workflow repository checks that
+`processor/safe_inputs.py` is the shared copy.
 
 ## Licences
 
 Our code: Apache-2.0 (`LICENSE`). Everything in the image is under permissive licences (BSD, MIT,
-Apache-2.0, PSF, MPL-2.0 unmodified); no GPL code. See `THIRD_PARTY.md`.
+Apache-2.0, PSF, MPL-2.0 unmodified); no GPL Python packages (the Debian base layer contains GPL
+system tools). See `THIRD_PARTY.md`.
 
 ## Credits
 

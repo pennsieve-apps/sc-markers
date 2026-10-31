@@ -9,7 +9,9 @@ outputs), with planted markers:
   Planted sample artefact: SAMPLE_GENE is 12x higher in s1's Neuron nuclei only, so a pooled
   test can call it a Neuron marker; the sample-aware filter must drop it (1 of 4 samples).
 
-Writes INPUT_DIR layouts: linked (cells/, labels/) and flat (everything side by side).
+Writes INPUT_DIR layouts: linked (cells/, labels/), flat (everything side by side), and platform:
+the real link layout, platform/cells/ and platform/labels/ real folders whose entries are symlinks
+into a sibling upstream output folder (upstream/cells/, upstream/labels/).
 
     python -m tests.make_fixture data/fixture --layout both
 """
@@ -103,25 +105,34 @@ def make_fixture(root: Path, layout: str = "both", seed: int = 7) -> dict[str, P
     made = [(sid, *make_sample(sid, cond, rng)) for sid, cond in SAMPLES]
     labels = pd.concat([m[2] for m in made], ignore_index=True)
     out: dict[str, Path] = {}
-    for name in (["linked", "flat"] if layout == "both" else [layout]):
-        base = root / name
+    for name in (["linked", "flat", "platform"] if layout == "both" else [layout]):
+        base = root / ("upstream" if name == "platform" else name)
         if base.exists():
             shutil.rmtree(base)
-        cells = base / "cells" if name == "linked" else base
-        lab = base / "labels" if name == "linked" else base
+        cells = base / "cells" if name != "flat" else base
+        lab = base / "labels" if name != "flat" else base
         for d in (cells, lab):
             d.mkdir(parents=True, exist_ok=True)
         for sid, adata, _ in made:
             adata.write_h5ad(cells / f"{sid}.h5ad")
         labels.to_csv(lab / "labels.csv", index=False)
         out[name] = base
+        if name == "platform":
+            link_root = root / "platform"
+            if link_root.exists():
+                shutil.rmtree(link_root)
+            for port in ("cells", "labels"):
+                (link_root / port).mkdir(parents=True)
+                for f in sorted((base / port).iterdir()):
+                    (link_root / port / f.name).symlink_to(Path("..", "..", "upstream", port, f.name))
+            out[name] = link_root
     return out
 
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("out", type=Path)
-    parser.add_argument("--layout", choices=["linked", "flat", "both"], default="both")
+    parser.add_argument("--layout", choices=["linked", "flat", "platform", "both"], default="both")
     parser.add_argument("--seed", type=int, default=7)
     args = parser.parse_args(argv)
     for name, path in make_fixture(args.out, args.layout, args.seed).items():

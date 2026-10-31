@@ -1,6 +1,7 @@
 cff-version: 1.2.0
 message: "If you use sc-markers, please cite it and the works it builds on, listed under references (the methods it uses and, when you ran it on it, the demo dataset)."
 type: software
+version: "0.1.0"
 title: sc-markers
 abstract: >-
   A Pennsieve processor of the single-cell workflows: marker genes per cell type or cluster from

@@ -76,12 +76,13 @@ def _iter_rows(elem, n_obs: int, n_vars: int, chunk: int):
         raise ValueError(f"X is stored as {enc or type(elem).__name__}; expected CSR or dense")
 
 
-def read_sample(path: Path, sample_id: str, wanted: pd.Index, chunk: int = CHUNK_ROWS) -> SampleBlock:
+def read_sample(inp, path: Path, sample_id: str, wanted: pd.Index, chunk: int = CHUNK_ROWS) -> SampleBlock:
     """The rows of X whose obs_names are in `wanted`, log-normalized (X as written by sc-qc and later steps;
     integer counts, as sc-prep writes them, are normalized to TARGET_SUM and log1p'd here)."""
     import h5py
 
-    with h5py.File(path, "r") as f:
+    inp.check_h5(path)            # no external links, external storage or virtual datasets
+    with h5py.File(inp.check(path), "r", locking=False) as f:
         obs_names = _read_index(f["obs"])
         genes = _read_index(f["var"]).tolist()
         take = np.flatnonzero(pd.Index(obs_names).isin(wanted))
@@ -120,27 +121,24 @@ def sample_consistency(X: sp.csr_matrix, sample: np.ndarray, label: np.ndarray, 
                        min_cells: int, min_logfc: float) -> tuple[np.ndarray, np.ndarray]:
     """Per label x gene: in how many samples the label's log2 fold change over the rest of that sample's cells
     (computed as scanpy does, from the means of expm1(X)) is at least min_logfc (n_up); and per label how many
-    samples had >= min_cells of the label and of the rest (n_tested)."""
-    samples = sorted(set(sample))
-    s_code = pd.Categorical(sample, categories=samples).codes
+    samples had >= min_cells of the label and of the rest (n_tested). One sample at a time, float32: memory is
+    labels x genes, not samples x labels x genes."""
     l_code = pd.Categorical(label, categories=labels).codes
-    n_s, n_l = len(samples), len(labels)
-    grp = s_code * n_l + l_code
-    ind = sp.csr_matrix((np.ones(len(grp)), (grp, np.arange(len(grp)))), shape=(n_s * n_l, len(grp)))
-    E = X.copy()
-    E.data = np.expm1(E.data)
-    sums = np.asarray((ind @ E).todense()).reshape(n_s, n_l, -1)            # sample x label x gene
-    counts = np.bincount(grp, minlength=n_s * n_l).reshape(n_s, n_l).astype(np.float64)
-    tot_sum, tot_n = sums.sum(axis=1), counts.sum(axis=1)                    # sample x gene, sample
+    n_l = len(labels)
     n_up = np.zeros((n_l, X.shape[1]), dtype=np.int32)
     n_tested = np.zeros(n_l, dtype=np.int32)
-    for li in range(n_l):
-        for si in range(n_s):
-            n_in, n_out = counts[si, li], tot_n[si] - counts[si, li]
-            if n_in < min_cells or n_out < min_cells:
-                continue
+    for s in sorted(set(sample)):
+        rows = np.flatnonzero(sample == s)
+        E = X[rows].astype(np.float32)
+        E.data = np.expm1(E.data)
+        lc = l_code[rows]
+        ind = sp.csr_matrix((np.ones(len(rows), dtype=np.float32), (lc, np.arange(len(rows)))), shape=(n_l, len(rows)))
+        sums = np.asarray((ind @ E).todense(), dtype=np.float32)              # label x gene
+        counts = np.bincount(lc, minlength=n_l)
+        total = sums.sum(axis=0)
+        for li in np.flatnonzero((counts >= min_cells) & (len(rows) - counts >= min_cells)):
             n_tested[li] += 1
-            lfc = np.log2((sums[si, li] / n_in + 1e-9) / ((tot_sum[si] - sums[si, li]) / n_out + 1e-9))
+            lfc = np.log2((sums[li] / counts[li] + 1e-9) / ((total - sums[li]) / (len(rows) - counts[li]) + 1e-9))
             n_up[li] += lfc >= min_logfc
     return n_up, n_tested
 

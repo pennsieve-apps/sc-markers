@@ -65,6 +65,7 @@ metadata says only "BSD" (umap-learn, numba, seaborn, kiwisolver), on 2026-10-31
 | simplejson (awslambdaric dependency) | 4.2.0 | MIT OR AFL-2.1 |
 | pip | 25.0.1 | MIT |
 
-No GPL code is in the image: scanpy's optional Leiden backends (igraph, leidenalg) are not
+No GPL Python packages are in the image (the Debian base layer contains GPL system tools, e.g.
+bash and coreutils): scanpy's optional Leiden backends (igraph, leidenalg) are not
 installed, as this app does no clustering. The MPL-2.0 components are used unmodified. The demo
 data the README describes (Discover 475, CC BY 4.0) is not in the image.

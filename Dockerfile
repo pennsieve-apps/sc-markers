@@ -1,4 +1,4 @@
-FROM python:3.12.16-slim-bookworm@sha256:623674a14ef93d052bb9b0de4dbf5f28eb578a35263838941cc8aa43213c1487
+FROM python:3.12.16-slim-bookworm@sha256:e697c81897302a4c4333bade000d98038fbb21eb064f8ee1fd42d02ebcd9d337
 
 ENV PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
@@ -22,9 +22,9 @@ ENV PYTHONPATH="/processor" \
     MPLCONFIGDIR=/tmp/matplotlib \
     NUMBA_CACHE_DIR=/tmp/numba
 
-# Build matplotlib's font cache now, writable by the run-time user (Lambda's file system is read-only
-# outside /tmp), and check that the stack imports.
-RUN python -c "import matplotlib.pyplot, scanpy, awslambdaric" && mkdir -p /tmp/numba && chmod -R a+rwX /tmp/matplotlib /tmp/numba
+# Check that the stack imports. Caches (matplotlib, numba) go to /tmp at run time (MPLCONFIGDIR,
+# NUMBA_CACHE_DIR): the only writable place besides OUTPUT_DIR.
+RUN python -c "import scanpy, awslambdaric"
 
 # Runs as uid 1000 on the platform; nothing here needs root. No network is used at run time.
 USER 1000

@@ -102,10 +102,13 @@ def pubmed(ref: dict) -> str:
     title_ok = norm(s.get("title", ""))[:60] == norm(ref["title"])[:60]
     years = {str(ref["year"]), str(ref["year"] - 1)}
     year_ok = any(y in s.get("pubdate", "") + s.get("epubdate", "") for y in years)
-    first = ref["authors"][0]
+    # First personal author: Crossref may list a consortium first; PubMed writes "Family Initials".
+    first = next((a for a in ref["authors"] if a.get("family")), ref["authors"][0])
     first_name = first.get("family") or first.get("name") or ""
-    pm_first = (s.get("authors") or [{}])[0].get("name", "")
-    author_ok = norm(first_name)[:6] == norm(pm_first.split(" ")[0])[:6]
+    pm_names = [a.get("name", "") for a in (s.get("authors") or [])]
+    pm_families = [n.rsplit(" ", 1)[0] if " " in n else n for n in pm_names[:3]]
+    pm_first = pm_names[0] if pm_names else ""
+    author_ok = any(norm(first_name) == norm(f) for f in pm_families)
     n_ok = len(s.get("authors") or []) == len(ref["authors"])
     if not (title_ok and year_ok and author_ok):
         print(f"  PubMed {ids[0]} does not match {ref['doi']}: title {title_ok}, year {year_ok}, first author "
