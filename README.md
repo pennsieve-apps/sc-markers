@@ -178,8 +178,7 @@ Apache-2.0, PSF, MPL-2.0 unmodified); no GPL code. See `THIRD_PARTY.md`.
   why per-cell p-values are inflated or circular; their work is the caveat on every output.
 - **Heumos et al.** (2023) and the Single-cell Best Practices Consortium wrote the guide this app
   follows; **Matplotlib** (Hunter 2007) draws the figures.
-- Demo data: **Arendt-Tranholm A, Sankaranarayanan I and Price TJ** (University of Texas at
-  Dallas) shared the drg-c2 single-nucleus data on Pennsieve Discover (dataset 475, CC BY 4.0);
+- Demo data: **Arendt-Tranholm A, Sankaranarayanan I and Price TJ** shared the drg-c2 single-nucleus data on Pennsieve Discover (dataset 475, CC BY 4.0);
   it is described in Arendt-Tranholm et al., *Brain* 2026.
 
 ## Citations
