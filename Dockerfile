@@ -24,7 +24,8 @@ ENV PYTHONPATH="/processor" \
 
 # Check that the stack imports. Caches (matplotlib, numba) go to /tmp at run time (MPLCONFIGDIR,
 # NUMBA_CACHE_DIR): the only writable place besides OUTPUT_DIR.
-RUN python -c "import scanpy, awslambdaric"
+RUN python -c "import scanpy, awslambdaric" \
+    && mkdir -p /tmp/matplotlib /tmp/numba && chmod -R a+rwX /tmp/matplotlib /tmp/numba
 
 # Runs as uid 1000 on the platform; nothing here needs root. No network is used at run time.
 USER 1000
