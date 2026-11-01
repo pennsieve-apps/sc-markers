@@ -10,6 +10,11 @@ abstract: >-
   samples; writes a ranked marker table, a dot plot, a heatmap and a summary for the report.
 authors:
   - name: Pennsieve (University of Pennsylvania)
+contact:
+- given-names: Joost
+  family-names: Wagenaar
+  orcid: https://orcid.org/0009-0004-5925-5451
+  affiliation: University of Pennsylvania
 repository-code: "https://github.com/pennsieve-apps/sc-markers"
 license: Apache-2.0
 keywords:
