@@ -90,7 +90,9 @@ inputs:
   - name: cells
     description: <sample_id>.h5ad, one per sample, from sc-annotate or sc-integrate (log-normalized X).
     mediaTypes:
-      - application/x-hdf5
+      - "application/x-hdf5; profile=anndata"
+    formats:
+      - format_3590
     placement: subfolder
     required: true
   - name: labels
