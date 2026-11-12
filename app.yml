@@ -19,9 +19,6 @@ application:
     - genomics
     - cell-typing
     - marker-genes
-    - neuroscience
-    - pain
-    - musculoskeletal
 runtime:
   cpu: 2048
   # Measured on the demo data: see README "Runtime". Fits Lambda's 3008 MB because at most
