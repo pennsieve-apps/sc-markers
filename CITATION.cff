@@ -1,5 +1,6 @@
 cff-version: 1.2.0
-message: "If you use sc-markers, please cite it and the works it builds on, listed under references (the methods it uses and, when you ran it on it, the demo dataset)."
+message: >-
+  If you use this app, please cite the work it implements (preferred-citation), this release, and Pennsieve (RRID:SCR_021677); the other works it builds on are listed under references.
 type: software
 version: "0.1.2"
 title: sc-markers
@@ -23,6 +24,24 @@ keywords:
   - transcriptomics
   - marker genes
   - cell types
+# The work this app implements; the release report's "How to cite" puts it first.
+preferred-citation:
+  type: article
+  title: 'SCANPY: large-scale single-cell gene expression data analysis'
+  authors:
+  - family-names: Wolf
+    given-names: F. Alexander
+  - family-names: Angerer
+    given-names: Philipp
+  - family-names: Theis
+    given-names: Fabian J.
+  journal: Genome Biology
+  year: 2018
+  volume: '19'
+  issue: '1'
+  start: '15'
+  doi: 10.1186/s13059-017-1382-0
+  notes: PMID 29409532
 references:
   - type: article
     title: "SCANPY: large-scale single-cell gene expression data analysis"
